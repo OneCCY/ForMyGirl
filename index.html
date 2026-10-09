@@ -1,0 +1,747 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<script>
+!(function(j,a,g){j.__itrace_conf = {bid: 'f43basl8-6nqu7l3w',rel: '0.0.1', spa: true, uid: '', plugins:['jserror','interface','perf','resource','flow','blank']};var b = a.createElement("script");var d = a.getElementsByTagName("script")[0];b.type = "text/javascript";b.crossorigin = true;b.async = true;b.onload = function(){j.__itrace && j.__itrace.setReady()};d.parentNode.insertBefore(b,d);b.src = g})(window, document, "https://g.alicdn.com/woodpeckerx/itrace-next/itrace.iife.js")
+</script>
+
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>像素情书密码页</title>
+<!-- FONTS: 像素字体（在线加载，失败时回退等宽字体） -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap" rel="stylesheet">
+<style>
+/* SECTION: reset-vars */
+* { margin: 0; padding: 0; box-sizing: border-box; }
+:root {
+  --ink-letter: #4a2f16;
+  --pixel-font: 'Press Start 2P', 'Courier New', monospace;
+}
+html, body { height: 100%; }
+body {
+  font-family: var(--pixel-font);
+  overflow: hidden;
+  background: linear-gradient(to bottom, #a594d6 0%, #c78fb3 55%, #f4a698 100%);
+}
+button { font-family: var(--pixel-font); cursor: pointer; border: none; background: transparent; }
+
+/* SECTION: screens 三屏切换 */
+.screen {
+  position: fixed; inset: 0;
+  display: none;
+  align-items: center; justify-content: center;
+}
+.screen.active { display: flex; }
+
+/* SECTION: screen-transition 页面切换过渡动画（像素步进：入慢出慢，交叉淡入淡出） */
+.screen.active { animation: screen-in 1.05s steps(16, end) both; }
+@keyframes screen-in {
+  from { opacity: 0; transform: scale(1.06); filter: brightness(1.35) saturate(.55); }
+  to   { opacity: 1; transform: scale(1);    filter: brightness(1) saturate(1); }
+}
+/* 正在离场的旧屏：保持显示并逐步淡出，与新屏形成缓慢交叉过渡 */
+.screen.leaving { display: flex; animation: screen-out .9s steps(14, end) both; pointer-events: none; }
+@keyframes screen-out {
+  from { opacity: 1; transform: scale(1);    filter: brightness(1); }
+  to   { opacity: 0; transform: scale(.96);  filter: brightness(1.4) saturate(.6); }
+}
+/* 信封动画期间：背景屏整体后退压暗，突出前景信封 */
+.screen.behind { pointer-events: none; }
+.screen.behind .frame {
+  transition: filter .9s steps(12, end), transform .9s steps(12, end);
+  filter: brightness(.42) saturate(.7);
+  transform: scale(.96);
+}
+
+/* SECTION: envelope 信封开启动画（密码正确后播放，纯 CSS 像素绘制） */
+#envelope-overlay {
+  position: fixed; inset: 0; z-index: 40;
+  display: flex; align-items: center; justify-content: center;
+  opacity: 0; pointer-events: none;
+  background: rgba(28, 16, 38, .62);
+  transition: opacity .7s steps(12, end);
+}
+#envelope-overlay.active { opacity: 1; }
+.env-stage {
+  --ew: min(74vw, 56dvh);
+  position: relative;
+  width: var(--ew);
+  height: calc(var(--ew) * .7);
+  transform: scale(.42) translateY(8%);
+  opacity: 0;
+  transition: transform .85s steps(12, end), opacity .55s steps(8, end);
+}
+#envelope-overlay.active .env-stage { transform: scale(1) translateY(0); opacity: 1; }
+/* 退场：整只信封向观众推近并溶解，溶进背后的书信页 */
+#envelope-overlay.closing { opacity: 0; }
+#envelope-overlay.closing .env-stage {
+  transform: scale(1.14);
+  opacity: 0;
+  transition: transform .9s steps(14, end), opacity .8s steps(10, end);
+}
+
+/* 信封后层：露出来的信纸（初始整张藏在信封正面之下） */
+.env-letter {
+  position: absolute;
+  left: 9%; right: 9%; bottom: 8%;
+  height: 78%;
+  z-index: 1;
+  padding: 6% 9%;
+  display: flex; flex-direction: column; justify-content: center; gap: 7%;
+  background: #fffaef;
+  border: 5px solid #b08a5e;
+  box-shadow: inset 0 0 0 5px #f3e7cf;
+  transition: transform 1.2s steps(16, end);
+}
+.env-line { display: block; height: 7%; background: #dccbae; }
+#envelope-overlay.letter-out .env-letter { transform: translateY(-70%); }
+
+/* 信封正面（含折片暗面） */
+.env-body {
+  position: absolute; inset: 0;
+  z-index: 2;
+  background: #f0dcb4;
+  border: 6px solid #6f4f31;
+  box-shadow: inset 0 0 0 5px #fff3d8, 9px 9px 0 rgba(28, 16, 38, .35);
+}
+.env-fold {
+  position: absolute; inset: 6px; z-index: 2;
+  pointer-events: none;
+}
+.env-fold.left  { background: #e4cda0; clip-path: polygon(0 0, 50% 50%, 0 100%); }
+.env-fold.right { background: #dcc394; clip-path: polygon(100% 0, 50% 50%, 100% 100%); }
+.env-fold.bottom{ background: #ead7ac; clip-path: polygon(0 100%, 50% 50%, 100% 100%); }
+
+/* 火焰漆印：闭合时盖在封口，开启时放大淡出（仿佛被揭开） */
+.env-seal {
+  position: absolute;
+  left: 41%; top: 45%;
+  width: 18%;
+  height: auto;
+  aspect-ratio: 9 / 7;
+  z-index: 4;
+  transition: transform .6s steps(10, end), opacity .45s steps(8, end);
+}
+#envelope-overlay.flap-open .env-seal { transform: scale(1.8); opacity: 0; }
+
+/* 信封盖：像素阶梯三角，绕顶边向上翻折 */
+.env-flap {
+  position: absolute;
+  left: -6px; right: -6px; top: -6px;
+  height: 78%;
+  z-index: 3;
+  background: #6f4f31;
+  transform-origin: 50% 0%;
+  transform: rotateX(0deg);
+  backface-visibility: visible;
+  transition: transform 1.15s steps(16, end);
+  will-change: transform;
+  clip-path: polygon(0% 0%, 10% 0%, 10% 20%, 20% 20%, 20% 40%, 30% 40%, 30% 60%, 40% 60%,
+                     40% 80%, 50% 80%, 60% 80%, 60% 60%, 70% 60%, 70% 40%, 80% 40%,
+                     80% 20%, 90% 20%, 90% 0%, 100% 0%);
+}
+.env-flap::before {
+  content: '';
+  position: absolute; inset: 7px;
+  background: #f0dcb4;
+  transition: background 0s linear 0s;
+  clip-path: polygon(0% 0%, 10% 0%, 10% 20%, 20% 20%, 20% 40%, 30% 40%, 30% 60%, 40% 60%,
+                     40% 80%, 50% 80%, 60% 80%, 60% 60%, 70% 60%, 70% 40%, 80% 40%,
+                     80% 20%, 90% 20%, 90% 0%, 100% 0%);
+}
+#envelope-overlay.flap-open .env-flap { transform: rotateX(-178deg); }
+/* 翻到侧棱那一刻（约翻折过半）再换成信封内侧的牛皮色，避免看到突兀的变色 */
+#envelope-overlay.flap-open .env-flap::before { background: #dcc094; transition-delay: .5s; }
+/* 翻开完成后再降到信纸之下，避免信纸升起时被盖子挡住 */
+#envelope-overlay.flap-behind .env-flap { z-index: 0; }
+
+/* SECTION: music-btn 左上角像素播放按钮 */
+#btn-music {
+  position: fixed; top: 16px; left: 16px; z-index: 50;
+  width: 54px; height: 54px; padding: 0;
+  background: #ffdde6;
+  border: 4px solid #6a5acd;
+  box-shadow: 4px 4px 0 rgba(42, 30, 80, .45), inset 0 0 0 3px #fff0f5;
+  display: flex; align-items: center; justify-content: center;
+  image-rendering: pixelated;
+  transition: transform .08s steps(2, end);
+  -webkit-tap-highlight-color: transparent;
+}
+#btn-music:hover { transform: translateY(-2px); }
+#btn-music:active { transform: translateY(2px); box-shadow: 1px 1px 0 rgba(42,30,80,.45), inset 0 0 0 3px #fff0f5; }
+#btn-music:focus-visible { outline: 3px dashed #fff; outline-offset: 3px; }
+#btn-music svg { width: 58%; height: 58%; display: block; }
+#btn-music .icon-pause { display: none; }
+#btn-music.playing .icon-play { display: none; }
+#btn-music.playing .icon-pause { display: block; }
+#btn-music.load-failed { opacity: .45; cursor: not-allowed; }
+
+/* SECTION: frame 等比画框——保证覆盖层与背景图对位 */
+.frame {
+  position: relative;
+  width: min(100vw, calc(100dvh * var(--ar)));
+  aspect-ratio: var(--ar);
+  container-type: inline-size;
+  flex: 0 0 auto;
+}
+.frame .bg {
+  position: absolute; inset: 0;
+  width: 100%; height: 100%;
+  object-fit: fill;
+  display: block;
+  image-rendering: pixelated;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+.frame .bg-fallback {
+  position: absolute; inset: 0;
+  display: none;
+  align-items: center; justify-content: center;
+  color: #fff; font-size: 14px; text-align: center; padding: 24px;
+  background: linear-gradient(to bottom, #a594d6, #f4a698);
+}
+.frame.img-failed .bg { display: none; }
+.frame.img-failed .bg-fallback { display: flex; }
+
+/* SECTION: keypad-overlay 透明按键层（首页） */
+.key-hit {
+  position: absolute;
+  background: transparent;
+  border-radius: 12%;
+  transition: background .06s steps(2, end);
+  -webkit-tap-highlight-color: transparent;
+}
+.key-hit:hover { background: rgba(255, 255, 255, .14); }
+.key-hit:active { background: rgba(255, 255, 255, .32); }
+.key-hit:focus-visible { outline: 3px dashed #6a5acd; outline-offset: -3px; }
+
+/* SECTION: slot-overlay 密码槽数字 */
+.slot-digit {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  font-size: max(12px, 2.6cqw);
+  color: #e0335f;
+  text-shadow: 1px 1px 0 rgba(255,255,255,.5);
+  pointer-events: none;
+}
+
+/* SECTION: again-overlay 错误页 AGAIN 按键（像素心跳缩放 + 暖光 + 扩散光环）
+   注意：按钮本体是覆盖在截图上的透明热区，所以「放大缩小」要靠下面的
+   发光层与光环层来承载，否则缩放在视觉上看不见 */
+#btn-again {
+  position: absolute;
+  border-radius: 999px;
+  transition: background .06s steps(2, end);
+  -webkit-tap-highlight-color: transparent;
+  transform-origin: 50% 50%;
+  animation: again-beat 1.5s steps(10, end) infinite;
+}
+@keyframes again-beat {
+  0%   { transform: scale(1); }
+  10%  { transform: scale(1.09); }
+  20%  { transform: scale(1); }
+  30%  { transform: scale(1.09); }
+  40%  { transform: scale(1); }
+  100% { transform: scale(1); }
+}
+/* 内侧暖光：与心跳同拍亮起，让按钮本体发光 */
+#btn-again::before {
+  content: '';
+  position: absolute; inset: 0;
+  border-radius: 999px;
+  pointer-events: none;
+  animation: again-glow 1.5s steps(10, end) infinite;
+}
+@keyframes again-glow {
+  0%, 100% { box-shadow: 0 0 0 3px rgba(255, 240, 190, 0), 0 0 10px 2px rgba(255, 217, 74, .18); }
+  10%      { box-shadow: 0 0 0 3px rgba(255, 240, 190, .95), 0 0 26px 6px rgba(255, 217, 74, .8); }
+  20%      { box-shadow: 0 0 0 3px rgba(255, 240, 190, .1), 0 0 12px 2px rgba(255, 217, 74, .22); }
+  30%      { box-shadow: 0 0 0 3px rgba(255, 240, 190, .95), 0 0 26px 6px rgba(255, 217, 74, .8); }
+  40%      { box-shadow: 0 0 0 3px rgba(255, 240, 190, .1), 0 0 12px 2px rgba(255, 217, 74, .22); }
+}
+/* 向外扩散的金色像素光环 */
+#btn-again::after {
+  content: '';
+  position: absolute; inset: -2px;
+  border: 4px solid #ffd94a;
+  border-radius: 999px;
+  box-shadow: 0 0 0 3px rgba(74, 30, 70, .45);
+  pointer-events: none;
+  animation: again-ring 1.5s steps(12, end) infinite;
+}
+@keyframes again-ring {
+  0%   { transform: scale(1);    opacity: 1; }
+  60%  { transform: scale(1.26); opacity: 0; }
+  100% { transform: scale(1.26); opacity: 0; }
+}
+#btn-again:hover { background: rgba(255, 255, 255, .16); }
+#btn-again:active { background: rgba(255, 255, 255, .34); }
+#btn-again:focus-visible { outline: 3px dashed #6a5acd; outline-offset: -3px; }
+
+/* SECTION: letter-overlay 信纸文字区 */
+.paper-area {
+  position: absolute;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 2.2cqw 2.6cqw;
+  cursor: text;
+  scrollbar-width: thin;
+  scrollbar-color: #6f4f31 rgba(227, 213, 184, .5);
+}
+.paper-area::-webkit-scrollbar { width: 8px; }
+.paper-area::-webkit-scrollbar-track { background: rgba(227,213,184,.4); }
+.paper-area::-webkit-scrollbar-thumb { background: #6f4f31; }
+.letter-text {
+  font-family: var(--pixel-font);
+  font-size: max(9px, 0.98cqw);
+  line-height: 2.05;
+  color: var(--ink-letter);
+  word-break: break-word;
+  white-space: pre-wrap;
+}
+.letter-text p { margin-bottom: 1.5em; }
+.letter-text p.title-line {
+  font-size: max(11px, 1.22cqw);
+  color: #7a2f1d;
+  margin-bottom: 1.8em;
+  text-align: center;
+}
+.letter-text .ch { opacity: 0; }
+.letter-text .ch.on { opacity: 1; }
+.letter-text .caret-char {
+  display: inline-block; width: .62em; height: 1.05em;
+  background: var(--ink-letter); vertical-align: text-bottom;
+  animation: blink .8s steps(2, end) infinite;
+}
+@keyframes blink { 50% { opacity: 0; } }
+.paper-hint {
+  position: absolute; bottom: 1cqw; right: 2cqw;
+  font-size: max(8px, 0.7cqw);
+  color: rgba(74, 47, 22, .5);
+  pointer-events: none;
+  letter-spacing: 1px;
+}
+
+/* SECTION: responsive 适配不同 PC 尺寸 */
+@media (prefers-reduced-motion: reduce) {
+  .letter-text .caret-char { animation: none; }
+  .key-hit, #btn-music { transition: none; }
+  .screen.active { animation: none; }
+  .screen.leaving { animation: none; opacity: 0; }
+  #btn-again, #btn-again::after { animation: none; transition: none; }
+  #envelope-overlay { display: none !important; }
+}
+</style>
+</head>
+<body>
+
+<!-- SECTION: music 背景音乐（同目录 music.mp3）与像素播放按钮 -->
+<audio id="bgm" src="music.mp3" loop preload="auto"></audio>
+<button id="btn-music" type="button" aria-label="播放或暂停背景音乐" title="播放 / 暂停背景音乐">
+  <svg class="icon-play" viewBox="0 0 9 9" shape-rendering="crispEdges" aria-hidden="true" fill="#d6385f">
+    <rect x="1" y="0" width="1" height="9"/><rect x="2" y="1" width="2" height="7"/><rect x="4" y="2" width="2" height="5"/><rect x="6" y="3" width="1" height="3"/><rect x="7" y="4" width="1" height="1"/>
+  </svg>
+  <svg class="icon-pause" viewBox="0 0 9 9" shape-rendering="crispEdges" aria-hidden="true" fill="#d6385f">
+    <rect x="1" y="0" width="2" height="9"/><rect x="5" y="0" width="2" height="9"/>
+  </svg>
+</button>
+
+<!-- SECTION: envelope 信封开启动画层（密码正确后播放，纯 CSS 像素绘制） -->
+<div id="envelope-overlay" aria-hidden="true">
+  <div class="env-stage">
+    <!-- 藏在信封里的信纸，封盖打开后向上抽出 -->
+    <div class="env-letter">
+      <span class="env-line" style="width:74%"></span>
+      <span class="env-line" style="width:94%"></span>
+      <span class="env-line" style="width:62%"></span>
+      <span class="env-line" style="width:88%"></span>
+      <span class="env-line" style="width:38%"></span>
+    </div>
+    <!-- 信封正面与折片暗面 -->
+    <div class="env-body"></div>
+    <div class="env-fold left"></div>
+    <div class="env-fold right"></div>
+    <div class="env-fold bottom"></div>
+    <!-- 像素爱心漆印 -->
+    <svg class="env-seal" viewBox="0 0 9 7" shape-rendering="crispEdges" fill="#d6385f">
+      <rect x="1" y="0" width="2" height="1"/><rect x="6" y="0" width="2" height="1"/>
+      <rect x="0" y="1" width="9" height="2"/>
+      <rect x="1" y="3" width="7" height="1"/>
+      <rect x="2" y="4" width="5" height="1"/>
+      <rect x="3" y="5" width="3" height="1"/>
+      <rect x="4" y="6" width="1" height="1"/>
+    </svg>
+    <!-- 信封盖（像素阶梯三角） -->
+    <div class="env-flap"></div>
+  </div>
+</div>
+
+<!-- SECTION: password 密码输入屏（背景：首页截图） -->
+<section class="screen active" id="screen-password" aria-label="密码输入">
+  <div class="frame" id="frame-password" style="--ar: 1861 / 890;">
+    <img class="bg" id="bg-password" alt="像素风密码输入页面背景" data-image="shouye.png">
+    <div class="bg-fallback">背景图加载失败，请检查网络后刷新</div>
+    <div id="slot-layer" aria-hidden="true"></div>
+    <div id="keypad-layer" role="group" aria-label="数字键盘"></div>
+  </div>
+</section>
+
+<!-- SECTION: error 错误提示屏（背景：错误页截图） -->
+<section class="screen" id="screen-error" aria-label="密码错误">
+  <div class="frame" id="frame-error" style="--ar: 1856 / 889;">
+    <img class="bg" id="bg-error" alt="密码错误提示页面背景" data-image="page-error.png">
+    <div class="bg-fallback">背景图加载失败，请检查网络后刷新</div>
+    <!-- AGAIN 按钮热区：对齐截图 (1337,575)-(1596,655) -->
+    <button id="btn-again" type="button" data-primary-action aria-label="AGAIN，返回密码输入"
+      style="left:71.5%;top:64.0%;width:15.1%;height:10.4%;"></button>
+  </div>
+</section>
+
+<!-- SECTION: letter 书信屏（背景：书信页截图） -->
+<section class="screen" id="screen-letter" aria-label="书信">
+  <div class="frame" id="frame-letter" style="--ar: 1875 / 898;">
+    <img class="bg" id="bg-letter" alt="打开的信封页面背景" data-image="shuxin.png">
+    <div class="bg-fallback">背景图加载失败，请检查网络后刷新</div>
+    <!-- 棕色信纸文字区：对齐截图信纸 (372,42)-(1511,821)，内缩留边 -->
+    <div class="paper-area" id="paper" tabindex="0" aria-label="信纸内容，可上下滚动，点击可跳过打字动画"
+      style="left:22.4%;top:9.9%;width:55.4%;height:76.2%;">
+      <div class="letter-text" id="letter-text"></div>
+      <span class="paper-hint"></span>
+    </div>
+  </div>
+</section>
+
+<script>
+/* SECTION: app 状态机与交互逻辑 */
+(function () {
+  'use strict';
+  var PASS = '1014';
+  var input = [];
+  var locked = false;
+  var typeTimer = null;
+  var screens = {
+    password: document.getElementById('screen-password'),
+    error: document.getElementById('screen-error'),
+    letter: document.getElementById('screen-letter')
+  };
+
+  /* SECTION: bg-images 背景图注入与失败降级 */
+  document.querySelectorAll('img.bg').forEach(function (img) {
+    img.addEventListener('error', function () {
+      img.closest('.frame').classList.add('img-failed');
+    });
+    img.src = img.dataset.image;
+  });
+
+  /* SECTION: keypad-overlay 透明按键生成（坐标来自截图像素分析，单位 %） */
+  /* 心形按键网格：4 行 × 3 列，shouye.png 1861×890 */
+  var KEY_COLS = [
+    { left: 62.22, width: 6.88 },
+    { left: 69.53, width: 6.88 },
+    { left: 76.84, width: 6.88 }
+  ];
+  var KEY_ROWS = [
+    { top: 47.19, height: 11.80 },
+    { top: 58.99, height: 12.13 },
+    { top: 71.12, height: 12.13 },
+    { top: 83.37, height: 12.13 }
+  ];
+  var KEYS = ['1','2','3','4','5','6','7','8','9','*','0','#'];
+  var keypadLayer = document.getElementById('keypad-layer');
+  KEYS.forEach(function (k, i) {
+    var col = KEY_COLS[i % 3];
+    var row = KEY_ROWS[Math.floor(i / 3)];
+    var btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'key-hit';
+    btn.dataset.key = k;
+    btn.setAttribute('aria-label', k === '*' ? '清空输入' : (k === '#' ? '删除一位' : '数字 ' + k));
+    if (k === '1') btn.setAttribute('data-primary-action', '');
+    btn.style.left = col.left + '%';
+    btn.style.width = col.width + '%';
+    btn.style.top = row.top + '%';
+    btn.style.height = row.height + '%';
+    btn.addEventListener('click', function () { handleKey(k); });
+    keypadLayer.appendChild(btn);
+  });
+
+  /* SECTION: slot-overlay 密码槽数字（4 个槽中心点） */
+  var SLOT_CENTERS = [
+    { x: 64.62, y: 37.19 },
+    { x: 70.20, y: 37.19 },
+    { x: 75.79, y: 37.19 },
+    { x: 81.38, y: 37.19 }
+  ];
+  var slotLayer = document.getElementById('slot-layer');
+  var slotEls = SLOT_CENTERS.map(function (c) {
+    var s = document.createElement('span');
+    s.className = 'slot-digit';
+    s.style.left = c.x + '%';
+    s.style.top = c.y + '%';
+    slotLayer.appendChild(s);
+    return s;
+  });
+
+  function render() {
+    slotEls.forEach(function (el, i) {
+      el.textContent = input[i] || '';
+    });
+  }
+
+  /* SECTION: show 三屏切换：旧屏缓慢淡出、新屏缓慢淡入，交错组成自然过渡 */
+  var current = 'password';
+
+  function show(name) {
+    if (name === current) return;
+    var from = screens[current];
+    var to = screens[name];
+    current = name;
+    if (from) {
+      clearTimeout(from.leaveTimer);
+      from.classList.remove('active', 'behind');
+      from.classList.add('leaving');
+      /* 兜底清理，防止动画被中断后旧屏一直留在 DOM 上 */
+      from.leaveTimer = setTimeout(function () { from.classList.remove('leaving'); }, 1000);
+    }
+    /* 若该屏还挂着一轮未清理的退场定时器，先取消，避免它把刚加的 active 状态抢掉 */
+    clearTimeout(to.leaveTimer);
+    void to.offsetWidth;
+    to.classList.remove('leaving');
+    to.classList.add('active');
+  }
+
+  function reset() {
+    input = [];
+    locked = false;
+    if (typeTimer) { clearInterval(typeTimer); typeTimer = null; }
+    render();
+  }
+
+  /* SECTION: input 输入与校验 */
+  function handleKey(k) {
+    if (!screens.password.classList.contains('active') || locked) return;
+    if (k === '*') { input = []; render(); return; }
+    if (k === '#') { input.pop(); render(); return; }
+    if (input.length >= 4) return;
+    input.push(k);
+    render();
+    if (input.length === 4) {
+      locked = true;
+      setTimeout(function () {
+        if (input.join('') === PASS) {
+          openEnvelope();
+        } else {
+          locked = false;
+          show('error');
+        }
+      }, 320);
+    }
+  }
+
+  /* SECTION: envelope-flow 信封开启流程：淡入 → 漆印化开 → 封盖翻折 → 信纸抽出 → 淡出到书信页 */
+  var envOverlay = document.getElementById('envelope-overlay');
+  var envTimers = [];
+
+  function envAt(ms, fn) { envTimers.push(setTimeout(fn, ms)); }
+
+  function clearEnvTimers() {
+    envTimers.forEach(clearTimeout);
+    envTimers = [];
+  }
+
+  function openEnvelope() {
+    if (reduced) { locked = false; show('letter'); startLetter(); return; }
+
+    clearEnvTimers();
+    envOverlay.classList.remove('active', 'flap-open', 'flap-behind', 'letter-out');
+    envOverlay.classList.add('active');
+    if (screens.password) screens.password.classList.add('behind');
+
+    envAt(800,  function () { envOverlay.classList.add('flap-open'); });   /* 漆印淡出 + 封盖翻折 */
+    envAt(2000, function () { envOverlay.classList.add('flap-behind'); }); /* 封盖降到信纸之下 */
+    envAt(2120, function () { envOverlay.classList.add('letter-out'); });  /* 信纸缓缓抽出 */
+
+    envAt(3500, function () {                                              /* 信封退场，书信页淡入 */
+      if (screens.password) screens.password.classList.remove('behind');
+      show('letter');
+      startLetter();
+      envOverlay.classList.add('closing');
+    });
+    envAt(4250, function () {                                              /* 收尾复位，便于再次播放 */
+      envOverlay.classList.remove('active', 'closing', 'flap-open', 'flap-behind', 'letter-out');
+      clearEnvTimers();
+      locked = false;
+    });
+  }
+
+  document.getElementById('btn-again').addEventListener('click', function () {
+    reset();
+    show('password');
+  });
+
+  /* 实体键盘支持 */
+  document.addEventListener('keydown', function (e) {
+    if (screens.password.classList.contains('active')) {
+      if (/^[0-9]$/.test(e.key)) { handleKey(e.key); }
+      else if (e.key === 'Backspace') { handleKey('#'); }
+      else if (e.key === 'Escape') { handleKey('*'); }
+    } else if (screens.error.classList.contains('active')) {
+      if (e.key === 'Enter' || e.key === ' ') { reset(); show('password'); }
+    }
+  });
+
+  /* SECTION: letter-content 信件内容（用户指定文本） */
+  var LETTER = [
+    { t: true, s: `To My Beautiful Girl, Happy 18th Birthday ❤️🎂` },
+    { s: `Happy 18th birthday, my love! ❤️` },
+    { s: `Today is such a special day because it is the day the most beautiful girl in my world was born. I wish I could be right beside you right now, holding you in my arms, looking into your eyes, and telling you how much you mean to me.` },
+    { s: `First of all, I want you to know that you are more than just my girlfriend. You are someone who makes my days brighter, my heart happier, and my life more meaningful. Even the smallest things you do can make me smile, and sometimes, just seeing your face is enough to make my whole day better. I don't think you truly understand how special you are to me.` },
+    { s: `Now that you are turning 18, I hope this new chapter of your life brings you endless happiness, beautiful memories, and countless reasons to smile. I hope you always have the courage to chase your dreams, the strength to overcome difficult days, and the confidence to remember how amazing you are. Even when life gets hard, please remember that you don't have to face everything alone. I'll always do my best to be someone you can lean on.` },
+    { s: `My love, I know I'm not perfect, and I may not always know the right words to say or the right things to do. But one thing I want you to be sure of is that my feelings for you are real. I want to celebrate your happiest moments, comfort you when you're sad, listen to you when you need someone to talk to, and remind you how loved you are when you forget it yourself.` },
+    { s: `I don't just want to be part of your life today. I want to be there for the little moments, the big achievements, the silly arguments, the random late-night conversations, and all the beautiful memories we have yet to create. I want us to grow together, learn from each other, and become better people while continuing to love each other.` },
+    { s: `If I could give you one thing for your birthday, I would give you the ability to see yourself through my eyes, even just for a moment. Then you would understand why I think you're so beautiful, why your smile means so much to me, and why my heart chooses you again and again.` },
+    { s: `Thank you for coming into my life and giving me someone so precious to love. Thank you for being yourself, for sharing your time with me, and for giving me memories that I will always treasure. No matter how much you grow, how much your life changes, or how many birthdays come and go, I hope you will always remember that you deserve genuine love, endless happiness, and all the beautiful things this world has to offer.` },
+    { s: `Happy 18th birthday, my princess. 👑💕 I hope your birthday is as sweet as your smile and as beautiful as your heart. May all your wishes come true, and may this new age bring you more happiness than you could ever imagine.` },
+    { s: `I love you more than these words could ever explain. And if I had the chance to choose again, I would still choose you, over and over, in every possible lifetime.` },
+    { s: `Happy birthday, my baby, my princess, and my favorite person in the world. I love you, always and forever. ❤️` },
+    { s: `With all my love,` },
+    { s: `Your boyfriend. 💌` }
+  ];
+
+  /* SECTION: typewriter 逐字打印（增量渲染：内容随打印逐步增长，滚动条只在溢出后出现并跟随打印位置） */
+  var paper = document.getElementById('paper');
+  var letterBox = document.getElementById('letter-text');
+  var reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  /* 是否跟随打印位置滚动：用户手动往上翻时暂停跟随，翻回底部附近自动恢复 */
+  var pinned = true;
+  paper.addEventListener('scroll', function () {
+    pinned = (paper.scrollHeight - paper.scrollTop - paper.clientHeight) < 30;
+  });
+
+  /* 把 LETTER 展平成操作队列：{p:true,title} 开段 / {c:'字'} 写字 */
+  function buildOps() {
+    var ops = [];
+    LETTER.forEach(function (para) {
+      ops.push({ p: true, title: !!para.t });
+      Array.from(para.s).forEach(function (ch) { ops.push({ c: ch }); });
+    });
+    return ops;
+  }
+
+  var ops = [];
+  var opIndex = 0;
+  var curP = null;
+  var caret = null;
+
+  function ensureCaret() {
+    if (!caret) {
+      caret = document.createElement('span');
+      caret.className = 'caret-char';
+    }
+    if (curP) curP.appendChild(caret);
+  }
+
+  function applyOp(op) {
+    if (op.p) {
+      if (caret && caret.parentNode) caret.parentNode.removeChild(caret);
+      curP = document.createElement('p');
+      if (op.title) curP.className = 'title-line';
+      letterBox.appendChild(curP);
+    } else {
+      if (!curP) { curP = document.createElement('p'); letterBox.appendChild(curP); }
+      if (caret && caret.parentNode) caret.parentNode.removeChild(caret);
+      curP.appendChild(document.createTextNode(op.c));
+      ensureCaret();
+    }
+  }
+
+  function followScroll() {
+    if (pinned) paper.scrollTop = paper.scrollHeight;
+  }
+
+  function flushAll() {
+    if (typeTimer) { clearInterval(typeTimer); typeTimer = null; }
+    while (opIndex < ops.length) { applyOp(ops[opIndex]); opIndex++; }
+    if (caret && caret.parentNode) caret.parentNode.removeChild(caret);
+    caret = null;
+    followScroll();
+  }
+
+  function startLetter() {
+    if (typeTimer) { clearInterval(typeTimer); typeTimer = null; }
+    letterBox.textContent = '';
+    ops = buildOps();
+    opIndex = 0;
+    curP = null;
+    caret = null;
+    pinned = true;
+    paper.scrollTop = 0;
+    if (reduced) { flushAll(); return; }
+    typeTimer = setInterval(function () {
+      if (opIndex >= ops.length) {
+        clearInterval(typeTimer); typeTimer = null;
+        if (caret && caret.parentNode) caret.parentNode.removeChild(caret);
+        caret = null;
+        return;
+      }
+      /* 每 tick 打 3 个字符，全文约 20 秒打完 */
+      for (var n = 0; n < 1 && opIndex < ops.length; n++, opIndex++) {
+        applyOp(ops[opIndex]);
+      }
+      followScroll();
+    }, 18);
+  }
+
+  /* 点击信纸跳过打字动画 */
+  paper.addEventListener('click', function () {
+    if (typeTimer) flushAll();
+  });
+
+  /* SECTION: music-logic 背景音乐控制 */
+  var bgm = document.getElementById('bgm');
+  var btnMusic = document.getElementById('btn-music');
+
+  function syncIcon() {
+    btnMusic.classList.toggle('playing', !bgm.paused);
+  }
+
+  function tryPlay() {
+    var p = bgm.play();
+    if (p && typeof p.then === 'function') {
+      p.then(syncIcon).catch(function () {
+        /* 浏览器拦截自动播放：等用户第一次操作页面时再启动 */
+        var once = function () {
+          bgm.play().then(syncIcon).catch(function () {});
+        };
+        document.addEventListener('pointerdown', once, { once: true });
+        document.addEventListener('keydown', once, { once: true });
+      });
+    }
+  }
+
+  btnMusic.addEventListener('click', function () {
+    if (bgm.paused) {
+      var p = bgm.play();
+      if (p && typeof p.then === 'function') p.then(syncIcon).catch(function () {});
+    } else {
+      bgm.pause();
+      syncIcon();
+    }
+  });
+  bgm.addEventListener('play', syncIcon);
+  bgm.addEventListener('pause', syncIcon);
+  bgm.addEventListener('error', function () {
+    /* 同目录下没有 music.mp3 时按钮置灰提示 */
+    btnMusic.classList.add('load-failed');
+    btnMusic.title = '未找到同目录下的 music.mp3';
+  });
+  tryPlay();
+
+  reset();
+})();
+</script>
+</body>
+</html>
